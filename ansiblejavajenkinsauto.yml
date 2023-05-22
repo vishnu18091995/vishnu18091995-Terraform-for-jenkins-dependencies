@@ -1,0 +1,133 @@
+---
+- hosts: localhost
+  remote_user: ubuntu
+  become: true
+  tasks:
+    - name: Task - 1 Update APT package manager repositories cache
+      become: true
+      apt:
+        update_cache: yes
+    - name: Task -2 Install Java using Ansible
+      become: yes
+      apt:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+           - openjdk-11-jdk
+    - name: task -3 install zip
+      become: yes
+      apt:
+        name: unzip
+        state: present
+ 
+
+   
+    - name: ensure the jenkins apt repository key is installed
+      apt_key: url=https://pkg.jenkins.io/debian/jenkins.io-2023.key state=present
+
+      become: yes
+
+    - name: ensure the repository is configured
+      apt_repository: repo='deb https://pkg.jenkins.io/debian binary/' state=present
+      become: yes
+    
+    
+    - name: ensure jenkins is installed
+      apt: name=jenkins update_cache=yes
+      become: yes
+
+    - name: ensure jenkins is running
+      service: name=jenkins state=started
+  
+
+    
+    - name: install dependencies
+      apt:
+        name: "{{item}}"
+        state: present
+        update_cache: yes
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - software-properties-common
+    - name: add GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    - name: add docker repository to apt
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+    - name: install docker
+      apt:
+        name: "{{item}}"
+        state: latest
+        update_cache: yes
+      loop:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+    - name: check docker is active
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    - name: Ensure group "docker" exists
+      ansible.builtin.group:
+        name: docker
+        state: present
+    - name: adding ubuntu to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+    - name: adding jenkins to docker group
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+    - name: docker socket permissions
+      ansible.builtin.file:
+        path: /var/run/docker.sock
+        mode: "0666"
+    - name: instaling aws-cli
+      get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+        dest: /usr/local/bin
+        mode: "0777"
+          #  ignore_errors: yes
+
+    - name: Unarchive a file that is already on the remote machine
+      ansible.builtin.unarchive:
+        mode: "0777"
+        src: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+        dest: /usr/local/bin
+        remote_src: yes
+
+    - name: Run aws_cli
+      shell: sudo apt install awscli -y
+      args:
+       chdir: /usr/local/bin
+       warn: true
+      ignore_errors: yes
+
+    - name: Show AWS Version
+      shell: aws --version
+
+    - name: instaling eksctlcli
+      get_url:
+        url: https://github.com/weaveworks/eksctl/releases/download/v0.126.0-rc.0/eksctl_Linux_amd64.tar.gz
+        dest: /usr/local/bin
+        mode: "0777"
+
+    - name: Unarchive a file that is already on the remote machine
+      ansible.builtin.unarchive:
+        mode: "0777"
+        src: https://github.com/weaveworks/eksctl/releases/download/v0.126.0-rc.0/eksctl_Linux_amd64.tar.gz
+        dest: /usr/local/bin
+        remote_src: yes
+    
+
